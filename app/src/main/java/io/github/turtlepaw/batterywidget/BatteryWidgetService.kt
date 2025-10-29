@@ -25,7 +25,7 @@ class BatteryWidgetService : Service() {
     private val widgetUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             // update widgets on any battery/bt change
-            updateAllWidgets()
+            updateAllWidgets(context)
         }
     }
 
@@ -64,16 +64,6 @@ class BatteryWidgetService : Service() {
         registerReceiver(widgetUpdateReceiver, filter)
     }
 
-    private fun updateAllWidgets() {
-        CoroutineScope(Dispatchers.Main).launch {
-            val manager = GlanceAppWidgetManager(this@BatteryWidgetService)
-            val glanceIds = manager.getGlanceIds(BatteryWidget::class.java)
-            glanceIds.forEach {
-                BatteryWidget().update(this@BatteryWidgetService, it)
-            }
-        }
-    }
-
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -99,5 +89,15 @@ class BatteryWidgetService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return START_STICKY // restart if killed
+    }
+}
+
+fun updateAllWidgets(context: Context) {
+    CoroutineScope(Dispatchers.Main).launch {
+        val manager = GlanceAppWidgetManager(context)
+        val glanceIds = manager.getGlanceIds(BatteryWidget::class.java)
+        glanceIds.forEach {
+            BatteryWidget().update(context, it)
+        }
     }
 }

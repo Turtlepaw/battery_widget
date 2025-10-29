@@ -9,6 +9,7 @@ import com.google.android.gms.wearable.WearableListenerService
 import io.github.turtlepaw.batterywidget.R
 import io.github.turtlepaw.batterywidget.data.DeviceBattery
 import io.github.turtlepaw.batterywidget.data.Repository
+import io.github.turtlepaw.batterywidget.updateAllWidgets
 import io.github.turtlepaw.shared.DataLayerConstants
 
 private const val TAG = "DataLayerSample"
@@ -85,6 +86,8 @@ class DataLayerListenerService : WearableListenerService() {
                 } else {
                     repository.addDevice(device)
                 }
+
+                updateAllWidgets(applicationContext)
 
                 Log.d(
                     "DataLayerListenerService",
