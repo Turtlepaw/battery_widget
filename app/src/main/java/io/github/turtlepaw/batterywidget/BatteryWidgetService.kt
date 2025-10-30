@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import io.github.turtlepaw.batterywidget.data.DeviceRepository
@@ -24,6 +25,10 @@ class BatteryWidgetService : Service() {
     private lateinit var repository: DeviceRepository
     private val widgetUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            Log.d(
+                "BatteryWidgetService",
+                "Received intent: ${intent.action}"
+            )
             // update widgets on any battery/bt change
             updateAllWidgets(context)
         }
@@ -60,6 +65,7 @@ class BatteryWidgetService : Service() {
             addAction("android.bluetooth.device.action.BATTERY_LEVEL_CHANGED")
             addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(Intent.ACTION_CONFIGURATION_CHANGED)
         }
         registerReceiver(widgetUpdateReceiver, filter)
     }

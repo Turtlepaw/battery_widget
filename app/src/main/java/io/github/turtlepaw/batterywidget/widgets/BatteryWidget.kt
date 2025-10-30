@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
@@ -53,7 +53,6 @@ import io.github.turtlepaw.batterywidget.data.Repository
 import io.github.turtlepaw.shared.DataLayerConstants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -62,27 +61,12 @@ class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        Log.d("BatteryWidgetReceiver", "Enabled")
-        // start service when first widget added
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(Intent(context, BatteryWidgetService::class.java))
-        } else {
-            context.startService(Intent(context, BatteryWidgetService::class.java))
-        }
+        context.startForegroundService(Intent(context, BatteryWidgetService::class.java))
     }
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        // stop when last widget removed
         context.stopService(Intent(context, BatteryWidgetService::class.java))
-    }
-
-    override fun onRestored(context: Context?, oldWidgetIds: IntArray?, newWidgetIds: IntArray?) {
-        super.onRestored(context, oldWidgetIds, newWidgetIds)
-        Log.d(
-            "BatteryWidgetReceiver",
-            "Restored: oldWidgetIds=$oldWidgetIds, newWidgetIds=$newWidgetIds"
-        )
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -92,12 +76,7 @@ class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
 
         // launch async work
         CoroutineScope(Dispatchers.IO).launch {
-            delay(5000)
             try {
-                Log.d(
-                    "BatteryWidgetReceiver",
-                    "Sending ping"
-                )
                 val info = Wearable.getCapabilityClient(context)
                     .getCapability("battery", CapabilityClient.FILTER_REACHABLE)
                     .await()
@@ -217,11 +196,26 @@ class BatteryWidget : GlanceAppWidget() {
         deviceCount: Int,
         index: Int
     ) {
+        val nightMode = isNightMode(context)
         val baseColor = when (index) {
             0 -> GlanceTheme.colors.primaryContainer
             1 -> GlanceTheme.colors.tertiaryContainer
             2 -> GlanceTheme.colors.secondaryContainer
             else -> GlanceTheme.colors.primaryContainer
+        }.run {
+            if (nightMode)
+                this
+            else ColorProvider(
+                lerp(
+                    lerp(
+                        this.getColor(context),
+                        GlanceTheme.colors.primary.getColor(context),
+                        0.15f
+                    ),
+                    Color.White,
+                    0.05f
+                )
+            )
         }
         val onBaseColor = when (index) {
             0 -> GlanceTheme.colors.onPrimaryContainer
@@ -235,7 +229,11 @@ class BatteryWidget : GlanceAppWidget() {
         )
 
         val bgColor = ColorProvider(
-            androidx.compose.ui.graphics.lerp(Color.Black, baseColor.getColor(context), 0.6f)
+            lerp(
+                if (nightMode) Color.Black else Color.White,
+                baseColor.getColor(context),
+                if (nightMode) 0.6f else 0.8f
+            )
         )
 
         Box(
@@ -261,7 +259,17 @@ class BatteryWidget : GlanceAppWidget() {
             ) {
                 LinearProgressIndicator(
                     progress = device.battery / 100f,
-                    color = baseColor,
+                    color = baseColor.run {
+                        if (nightMode)
+                            this
+                        else ColorProvider(
+                            lerp(
+                                this.getColor(context),
+                                Color.Black,
+                                0.1f
+                            )
+                        )
+                    },
                     backgroundColor = bgColor,
                     modifier = GlanceModifier
                         .fillMaxSize()
