@@ -56,6 +56,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val serviceIntent = Intent(this, BatteryWidgetService::class.java)
+        startForegroundService(serviceIntent)
+
         setContent {
             BatteryWidgetTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
