@@ -133,13 +133,14 @@ class BluetoothHeadsetBatteryManager(
 
         Log.d("HeadsetBattery", "Connection state changed: device=${device?.address}, state=$state")
 
-        device?.let {
+        device?.let { device ->
             try {
                 if (state == BluetoothProfile.STATE_CONNECTED) {
-                    Log.d("HeadsetBattery", "Headset connected: ${it.name}, updating battery")
-                    updateDeviceBattery(it)
-                } else {
-                    Log.d("HeadsetBattery", "Headset state changed to $state for ${it.name}")
+                    updateDeviceBattery(device)
+                } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                    repository.removeDevice {
+                        it.id == device.address
+                    }
                 }
             } catch (e: SecurityException) {
                 Log.w("HeadsetBattery", "Permission denied handling connection: ${e.message}")

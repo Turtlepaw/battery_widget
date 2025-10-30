@@ -117,6 +117,15 @@ class DeviceRepository(private val context: Context) {
         }
     }
 
+    fun removeDevice(
+        predicate: (DeviceBattery) -> Boolean
+    ) {
+        _devices.update { devices ->
+            val updated = devices.filterNot { predicate(it) }
+            updated
+        }
+    }
+
     fun cleanup() {
         context.unregisterReceiver(batteryReceiver)
         headsetManager.cleanup()

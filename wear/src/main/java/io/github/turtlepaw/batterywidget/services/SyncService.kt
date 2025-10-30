@@ -1,5 +1,6 @@
 package io.github.turtlepaw.batterywidget.services
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -92,6 +93,7 @@ class BatteryWidgetService : Service() {
     }
 }
 
+@SuppressLint("VisibleForTests")
 fun DataClient.sendData(
     intent: Intent? = applicationContext.registerReceiver(
         null,
