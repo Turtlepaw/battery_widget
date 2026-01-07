@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,18 +19,20 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.LinearProgressIndicator
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.components.Scaffold
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
+import androidx.glance.layout.Column
 import androidx.glance.layout.Row
-import androidx.glance.layout.RowScope
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
@@ -93,6 +94,7 @@ class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 class BatteryWidget : GlanceAppWidget() {
+    override val sizeMode = SizeMode.Exact
     override var stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -125,7 +127,7 @@ class BatteryWidget : GlanceAppWidget() {
     }
 
     @OptIn(ExperimentalGlancePreviewApi::class)
-    @Preview(widthDp = 500, heightDp = 150)
+    @Preview(widthDp = 500, heightDp = 115)
     @Composable
     private fun PreviewMultiple() {
         Layout(
@@ -135,7 +137,7 @@ class BatteryWidget : GlanceAppWidget() {
                     "Phone",
                     93f,
                     false,
-                    R.drawable.ic_generic_phone,
+                    R.drawable.ic_settings_pixel_9,
                     false
                 ),
                 DeviceBattery(
@@ -143,7 +145,42 @@ class BatteryWidget : GlanceAppWidget() {
                     "Headset",
                     75f,
                     false,
-                    R.drawable.ic_generic_phone,
+                    R.drawable.ic_bt_headphones_a2dp,
+                    false
+                ),
+            ),
+            context = LocalContext.current
+        )
+    }
+
+    @OptIn(ExperimentalGlancePreviewApi::class)
+    @Preview(widthDp = 500, heightDp = 250)
+    @Composable
+    private fun PreviewLargeMultiple() {
+        Layout(
+            listOf(
+                DeviceBattery(
+                    "phone",
+                    "Phone",
+                    93f,
+                    false,
+                    R.drawable.ic_settings_pixel_9,
+                    false
+                ),
+                DeviceBattery(
+                    "watch",
+                    "Watch",
+                    42f,
+                    true,
+                    R.drawable.ic_watch,
+                    false
+                ),
+                DeviceBattery(
+                    "headset",
+                    "Headset",
+                    75f,
+                    false,
+                    R.drawable.ic_bt_headphones_a2dp,
                     false
                 ),
             ),
@@ -153,28 +190,46 @@ class BatteryWidget : GlanceAppWidget() {
 
     @Composable
     private fun Layout(devices: List<DeviceBattery>, context: Context) {
+        val size = LocalSize.current
+        val heightDp = size.height.value
         Scaffold(
             backgroundColor = GlanceTheme.colors.widgetBackground,
             modifier = GlanceModifier.fillMaxSize(),
             horizontalPadding = 10.dp
         ) {
-            LaunchedEffect(devices) {
-                Log.d(
-                    "BatteryWidget",
-                    "Devices: ${devices.size} total"
-                )
-                devices.forEach { device ->
-                    Log.d("BatteryWidget", "  - ${device.id}: ${device.battery}%")
+            if (heightDp > 120f) {
+                Column(
+                    modifier = GlanceModifier.fillMaxSize().padding(vertical = 10.dp),
+                ) {
+                    devices.take(3).forEachIndexed { index, device ->
+                        Device(
+                            device,
+                            context,
+                            devices.size,
+                            index,
+                            modifier = GlanceModifier.defaultWeight()
+                        )
+                        if (index < devices.take(3).size - 1) {
+                            Spacer(modifier = GlanceModifier.size(6.dp))
+                        }
+                    }
                 }
-            }
-            Row(
-                modifier = GlanceModifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                devices.take(3).forEachIndexed { index, device ->
-                    Device(device, context, devices.size, index)
-                    if (index < devices.take(3).size - 1) {
-                        Spacer(modifier = GlanceModifier.size(5.dp))
+            } else {
+                Row(
+                    modifier = GlanceModifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    devices.take(3).forEachIndexed { index, device ->
+                        Device(
+                            device,
+                            context,
+                            devices.size,
+                            index,
+                            modifier = GlanceModifier.defaultWeight().padding(vertical = 10.dp)
+                        )
+                        if (index < devices.take(3).size - 1) {
+                            Spacer(modifier = GlanceModifier.size(5.dp))
+                        }
                     }
                 }
             }
@@ -190,11 +245,12 @@ class BatteryWidget : GlanceAppWidget() {
 
     @SuppressLint("RestrictedApi")
     @Composable
-    private fun RowScope.Device(
+    private fun Device(
         device: DeviceBattery,
         context: Context,
         deviceCount: Int,
-        index: Int
+        index: Int,
+        modifier: GlanceModifier = GlanceModifier
     ) {
         val nightMode = isNightMode(context)
         val baseColor = when (index) {
@@ -237,9 +293,7 @@ class BatteryWidget : GlanceAppWidget() {
         )
 
         Box(
-            modifier = GlanceModifier
-                .defaultWeight()
-                .padding(vertical = 10.dp)
+            modifier = modifier
                 .cornerRadius(16.dp),
         ) {
             Box(

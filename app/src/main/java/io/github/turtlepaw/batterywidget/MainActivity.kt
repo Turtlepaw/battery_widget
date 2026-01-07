@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -99,9 +102,9 @@ fun MainScreen(modifier: Modifier = Modifier) {
 fun AppContent(
     allPermissionsGranted: Boolean,
     onRequestPermissions: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRunning: Boolean = rememberServiceRunning()
 ) {
-    val isRunning = rememberServiceRunning()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Column(
@@ -137,77 +140,116 @@ fun AppContent(
 
         if (!allPermissionsGranted) {
             Spacer(modifier = Modifier.height(32.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
+            InfoCard(
+                "Permission Required",
+                "Bluetooth permission is required to display battery levels of your connected devices.",
+                "Grant Permissions",
+                Icons.Default.Notifications
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Permissions Required",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "This app needs Bluetooth and notification permissions to monitor your connected devices and display battery levels.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = onRequestPermissions,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Grant Permissions")
-                    }
-                }
+                onRequestPermissions()
             }
         } else {
             Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        GlanceAppWidgetManager(context).requestPinGlanceAppWidget(
-                            receiver = BatteryWidgetReceiver::class.java,
-                            preview = BatteryWidget(),
-                            previewState = DpSize(245.dp, 115.dp)
-                        )
-                    }
-                }
-            ) {
-                Text(
-                    "Add widget"
-                )
-            }
 
-            Button(
-                {
+            if (!isRunning) {
+                Spacer(modifier = Modifier.height(12.dp))
+                InfoCard(
+                    "Service not running",
+                    "Battery levels of your device and connected devices may be outdated.",
+                    "Start service",
+                    Icons.Default.Warning,
+                    true
+                ) {
                     val intent = Intent(context, BatteryWidgetService::class.java)
                     context.startForegroundService(intent)
-                },
-                enabled = !isRunning
-            ) {
-                Text(
-                    if (isRunning) "Running" else "Start"
+                }
+            } else {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            GlanceAppWidgetManager(context).requestPinGlanceAppWidget(
+                                receiver = BatteryWidgetReceiver::class.java,
+                                preview = BatteryWidget(),
+                                previewState = DpSize(245.dp, 115.dp)
+                            )
+                        }
+                    }
+                ) {
+                    Text(
+                        "Add widget"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoCard(
+    leadingContent: String,
+    supportingContent: String,
+    actionContent: String,
+    icon: ImageVector,
+    isDanger: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val textColor = if (isDanger)
+        MaterialTheme.colorScheme.onErrorContainer
+    else
+        MaterialTheme.colorScheme.onSecondaryContainer
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDanger)
+                MaterialTheme.colorScheme.errorContainer
+            else
+                MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = leadingContent,
+                style = MaterialTheme.typography.titleMedium,
+                color = textColor
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = supportingContent,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = textColor
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isDanger)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    contentColor = if (isDanger)
+                        MaterialTheme.colorScheme.onError
+                    else
+                        MaterialTheme.colorScheme.onPrimary
                 )
+            ) {
+                Text(actionContent)
             }
         }
     }
@@ -219,7 +261,8 @@ fun MainScreenPreview() {
     BatteryWidgetTheme {
         AppContent(
             allPermissionsGranted = false,
-            onRequestPermissions = {}
+            onRequestPermissions = {},
+            isRunning = false
         )
     }
 }
@@ -230,7 +273,8 @@ fun MainScreenGrantedPreview() {
     BatteryWidgetTheme {
         AppContent(
             allPermissionsGranted = true,
-            onRequestPermissions = {}
+            onRequestPermissions = {},
+            isRunning = false
         )
     }
 }
